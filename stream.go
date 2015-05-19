@@ -21,6 +21,29 @@ const (
 	streamReset
 )
 
+func stateName(state streamState) string {
+	switch state {
+	case streamInit:
+		return "streamInit"
+	case streamSYNSent:
+		return "streamSYNSent"
+	case streamSYNReceived:
+		return "streamSYNReceived"
+	case streamEstablished:
+		return "streamEstablished"
+	case streamLocalClose:
+		return "streamLocalClose"
+	case streamRemoteClose:
+		return "streamRemoteClose"
+	case streamClosed:
+		return "streamClosed"
+	case streamReset:
+		return "streamReset"
+	default:
+		return "unkown"
+	}
+}
+
 // Stream is used to represent a logical stream
 // within a session.
 type Stream struct {
@@ -85,6 +108,8 @@ func (s *Stream) Read(b []byte) (n int, err error) {
 	defer asyncNotify(s.recvNotifyCh)
 START:
 	s.stateLock.Lock()
+
+	Debugf("state: %s", stateName(s.state))
 	switch s.state {
 	case streamLocalClose:
 		fallthrough
@@ -110,6 +135,7 @@ START:
 
 	// Read any bytes
 	n, _ = s.recvBuf.Read(b)
+	Debugf("read: %s", string(b))
 	s.recvLock.Unlock()
 
 	// Send a window update potentially
@@ -153,6 +179,7 @@ func (s *Stream) write(b []byte) (n int, err error) {
 	var body io.Reader
 START:
 	s.stateLock.Lock()
+	Debugf("state: %s", stateName(s.state))
 	switch s.state {
 	case streamLocalClose:
 		fallthrough
@@ -167,12 +194,14 @@ START:
 
 	// If there is no data available, block
 	window := atomic.LoadUint32(&s.sendWindow)
+	Debugf("window: %d", window)
 	if window == 0 {
 		goto WAIT
 	}
 
 	// Determine the flags if any
 	flags = s.sendFlags()
+	Debugf("flags: %s", flagName(flags))
 
 	// Send up to our send window
 	max = min(window, uint32(len(b)))
@@ -219,6 +248,8 @@ func (s *Stream) sendFlags() uint16 {
 		flags |= flagACK
 		s.state = streamEstablished
 	}
+
+	Debugf("state: %s flags: %s", stateName(s.state), flagName(flags))
 	return flags
 }
 
@@ -231,6 +262,8 @@ func (s *Stream) sendWindowUpdate() error {
 	// Determine the delta update
 	max := s.session.config.MaxStreamWindowSize
 	delta := max - atomic.LoadUint32(&s.recvWindow)
+
+	Debugf("recvWindow: %d, max: %d, delta: %d", s.recvWindow, max, delta)
 
 	// Determine the flags if any
 	flags := s.sendFlags()
@@ -321,6 +354,8 @@ func (s *Stream) processFlags(flags uint16) error {
 		}
 	}()
 
+	Debugf("flags: %s", flagName(flags))
+
 	s.stateLock.Lock()
 	defer s.stateLock.Unlock()
 	if flags&flagACK == flagACK {
@@ -372,6 +407,7 @@ func (s *Stream) incrSendWindow(hdr header, flags uint16) error {
 
 	// Increase window, unblock a sender
 	atomic.AddUint32(&s.sendWindow, hdr.Length())
+	Debugf("sendwindow: %d", s.sendWindow)
 	asyncNotify(s.sendNotifyCh)
 	return nil
 }
@@ -387,6 +423,8 @@ func (s *Stream) readData(hdr header, flags uint16, conn io.Reader) error {
 	if length == 0 {
 		return nil
 	}
+
+	Debugf("length: %d", length)
 	if remain := atomic.LoadUint32(&s.recvWindow); length > remain {
 		s.session.logger.Printf("[ERR] yamux: receive window exceeded (stream: %d, remain: %d, recv: %d)", s.id, remain, length)
 		return ErrRecvWindowExceeded
