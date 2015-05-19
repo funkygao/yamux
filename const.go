@@ -71,6 +71,21 @@ const (
 	typeGoAway
 )
 
+func typeName(typ uint8) string {
+	switch typ {
+	case typeGoAway:
+		return "goaway"
+	case typePing:
+		return "ping"
+	case typeWindowUpdate:
+		return "window"
+	case typeData:
+		return "data"
+	default:
+		return "unknown"
+	}
+}
+
 const (
 	// SYN is sent to signal a new stream. May
 	// be sent with a data payload
@@ -87,6 +102,23 @@ const (
 	// RST is used to hard close a given stream.
 	flagRST
 )
+
+func flagName(flag uint16) string {
+	v := ""
+	if flag&flagACK != 0 {
+		v += " ACK"
+	}
+	if flag&flagFIN != 0 {
+		v += "FIN"
+	}
+	if flag&flagRST != 0 {
+		v += "RST"
+	}
+	if flag&flagSYN != 0 {
+		v += "SYN"
+	}
+	return v
+}
 
 const (
 	// initialStreamWindow is the initial stream window size
@@ -137,8 +169,8 @@ func (h header) Length() uint32 {
 }
 
 func (h header) String() string {
-	return fmt.Sprintf("Vsn:%d Type:%d Flags:%d StreamID:%d Length:%d",
-		h.Version(), h.MsgType(), h.Flags(), h.StreamID(), h.Length())
+	return fmt.Sprintf("Ver:%d Type:%s Flags:%s StreamID:%d Length:%d",
+		h.Version(), typeName(h.MsgType()), flagName(h.Flags()), h.StreamID(), h.Length())
 }
 
 func (h header) encode(msgType uint8, flags uint16, streamID uint32, length uint32) {

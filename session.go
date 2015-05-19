@@ -101,6 +101,8 @@ func newSession(config *Config, conn io.ReadWriteCloser, client bool) *Session {
 	} else {
 		s.nextStreamID = 2
 	}
+
+	Debugf("config: %+v, nextStreamId:%d", *config, s.nextStreamID)
 	go s.recv()
 	go s.send()
 	if config.EnableKeepAlive {
@@ -158,6 +160,8 @@ GET_ID:
 		goto GET_ID
 	}
 
+	Debugf("nextStreamId: %d", atomic.LoadUint32(&s.nextStreamID))
+
 	// Register the stream
 	stream := newStream(s, id, streamInit)
 	s.streamLock.Lock()
@@ -168,6 +172,7 @@ GET_ID:
 	if err := stream.sendWindowUpdate(); err != nil {
 		return nil, err
 	}
+
 	return stream, nil
 }
 
@@ -293,6 +298,8 @@ func (s *Session) waitForSend(hdr header, body io.Reader) error {
 
 // waitForSendErr waits to send a header, checking for a potential shutdown
 func (s *Session) waitForSendErr(hdr header, body io.Reader, errCh chan error) error {
+	Debugf("%s body:%T", hdr, body)
+
 	ready := sendReady{Hdr: hdr, Body: body, Err: errCh}
 	select {
 	case s.sendCh <- ready:
@@ -309,6 +316,8 @@ func (s *Session) waitForSendErr(hdr header, body io.Reader, errCh chan error) e
 
 // sendNoWait does a send without waiting
 func (s *Session) sendNoWait(hdr header) error {
+	Debugf("%s", hdr)
+
 	select {
 	case s.sendCh <- sendReady{Hdr: hdr}:
 		return nil
@@ -324,6 +333,8 @@ func (s *Session) send() {
 		case ready := <-s.sendCh:
 			// Send a header if ready
 			if ready.Hdr != nil {
+				Debugf("sending hdr: %s", header(ready.Hdr))
+
 				sent := 0
 				for sent < len(ready.Hdr) {
 					n, err := s.conn.Write(ready.Hdr[sent:])
@@ -337,8 +348,12 @@ func (s *Session) send() {
 				}
 			}
 
+			// TODO what if hdr+body together?
+
 			// Send data from a body if given
 			if ready.Body != nil {
+				Debugf("body: %T", ready.Body)
+
 				_, err := io.Copy(s.conn, ready.Body)
 				if err != nil {
 					s.logger.Printf("[ERR] yamux: Failed to write body: %v", err)
@@ -350,6 +365,7 @@ func (s *Session) send() {
 
 			// No error, successful send
 			asyncSendErr(ready.Err, nil)
+
 		case <-s.shutdownCh:
 			return
 		}
@@ -376,6 +392,8 @@ func (s *Session) recvLoop() error {
 			}
 			return err
 		}
+
+		Debugf("hdr: %s", hdr)
 
 		// Verify the version
 		if hdr.Version() != protoVersion {
@@ -505,6 +523,7 @@ func (s *Session) incomingStream(id uint32) error {
 	}
 
 	// Allocate a new stream
+	Debugf("newStream for stream:%d", id)
 	stream := newStream(s, id, streamSYNReceived)
 
 	s.streamLock.Lock()
