@@ -57,7 +57,7 @@ func client() {
 	stream2.Read(b)
 	println(string(b))
 
-	// 现在问题来了，如何让stream1和stream2并发而非线性地运行?
+	// 现在问题来了，如何让stream1和stream2并发而非串行地运行?
 	// 除了goroutine，还有别的办法吗?
 }
 
