@@ -41,18 +41,24 @@ func client() {
 	session, err := yamux.Client(conn, nil)
 	dieIfError(err)
 
-	stream, err := session.OpenStream()
-	dieIfError(err)
-	stream.Write([]byte("hello"))
-	b := make([]byte, 100)
-	stream.Read(b)
-	println(string(b))
-
+	// 在一个socket上打开一个stream，每个stream长的都像个独立的socket
+	// 每个stream可以独立地IO
 	stream1, err := session.OpenStream()
 	dieIfError(err)
-	stream1.Write([]byte("hello1"))
+	stream1.Write([]byte("hello"))
+	b := make([]byte, 100)
 	stream1.Read(b)
 	println(string(b))
+
+	// 再打开一个stream
+	stream2, err := session.OpenStream()
+	dieIfError(err)
+	stream2.Write([]byte("hello1"))
+	stream2.Read(b)
+	println(string(b))
+
+	// 现在问题来了，如何让stream1和stream2并发而非线性地运行?
+	// 除了goroutine，还有别的办法吗?
 }
 
 func server() {
@@ -63,6 +69,7 @@ func server() {
 		conn, err := l.Accept()
 		dieIfError(err)
 
+		// 每个conn都是一个socket
 		go handleConn(conn)
 	}
 
@@ -76,10 +83,12 @@ func handleConn(conn net.Conn) {
 	for {
 		stream, err := session.AcceptStream()
 		if err == io.EOF {
+			stream.Close()
 			break
 		}
 		dieIfError(err)
 
+		// 这样的话，所有accept的stream就都是串行的，而非并行
 		b := make([]byte, 100)
 		stream.Read(b)
 		println(string(b))
@@ -88,4 +97,20 @@ func handleConn(conn net.Conn) {
 		stream.Write([]byte(fmt.Sprintf("world%d", i)))
 	}
 
+	/*
+		// 为了让每个stream可以独立并行，应该是这样，而不是上面那样
+		for {
+			stream, err := session.AcceptStream()
+			if err == io.EOF {
+				stream.Close()
+				break
+			}
+
+			go handleStream(stream)
+		}
+	*/
+
+}
+
+func handleStream(stream *yamux.Stream) {
 }
