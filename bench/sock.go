@@ -23,10 +23,14 @@ func client() {
 			log.Printf("[%3d]connected with %s\n", seq, addr)
 
 			msg := []byte(strings.Repeat("X", opts.sz))
+			b := make([]byte, opts.sz)
 			for j := 0; j < opts.n; j++ {
 				n, err := conn.Write(msg)
 				dieIfError(err)
 				addByteWritten(n)
+				n, err = conn.Read(b)
+				dieIfError(err)
+				addByteRead(n)
 			}
 		}(i)
 	}
@@ -52,6 +56,7 @@ func server() {
 
 func handleConn(conn net.Conn) {
 	b := make([]byte, opts.sz)
+	response := []byte(strings.Repeat("Y", opts.sz))
 	for {
 		b = b[:]
 		n, err := conn.Read(b)
@@ -60,6 +65,13 @@ func handleConn(conn net.Conn) {
 		}
 		dieIfError(err)
 		addByteRead(n)
+
+		// simulate biz logic overhead
+		time.Sleep(time.Millisecond * 50)
+
+		n, err = conn.Write(response)
+		dieIfError(err)
+		addByteWritten(n)
 	}
 
 }

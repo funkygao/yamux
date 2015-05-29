@@ -29,12 +29,16 @@ func client() {
 			defer wg.Done()
 
 			msg := []byte(strings.Repeat("X", opts.sz))
+			b := make([]byte, opts.sz)
 			stream, err := session.OpenStream()
 			dieIfError(err)
 			for i := 0; i < opts.n; i++ {
 				n, err := stream.Write(msg)
 				dieIfError(err)
 				addByteWritten(n)
+				n, err = stream.Read(b)
+				dieIfError(err)
+				addByteRead(n)
 			}
 		}(i)
 	}
@@ -76,6 +80,7 @@ func handleConn(conn net.Conn) {
 
 func handleStream(st *yamux.Stream) {
 	b := make([]byte, opts.sz)
+	response := []byte(strings.Repeat("Y", opts.sz))
 	for {
 		n, err := st.Read(b)
 		if err == io.EOF {
@@ -83,5 +88,12 @@ func handleStream(st *yamux.Stream) {
 		}
 		dieIfError(err)
 		addByteRead(n)
+
+		// simulate the biz logic overhead
+		time.Sleep(time.Millisecond * 50) // 50ms
+
+		n, err = st.Write(response)
+		dieIfError(err)
+		addByteWritten(n)
 	}
 }
