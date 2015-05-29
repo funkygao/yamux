@@ -1,61 +1,12 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"net"
-	"os"
 	"strings"
 	"sync"
 	"time"
 )
-
-const (
-	addr = "localhost:10123"
-	//addr = "10.77.144.193:10123"
-)
-
-var (
-	opts struct {
-		c    int
-		sz   int
-		n    int
-		mode string
-	}
-
-	bytesR int64
-	bytesW int64
-)
-
-func init() {
-	flag.IntVar(&opts.c, "c", 100, "concurrency")
-	flag.IntVar(&opts.sz, "s", 100, "size of each msg")
-	flag.IntVar(&opts.n, "n", 100000, "loops count")
-	flag.StringVar(&opts.mode, "m", "server", "client or server mode")
-
-	flag.Parse()
-}
-
-func dieIfError(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
-
-func main() {
-	switch opts.mode {
-	case "server":
-		server()
-
-	case "client":
-		client()
-
-	default:
-		flag.Usage()
-		os.Exit(0)
-	}
-
-}
 
 func client() {
 	t1 := time.Now()
