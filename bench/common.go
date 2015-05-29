@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/funkygao/golib/gofmt"
+	s "github.com/funkygao/golib/server"
 )
 
 const (
@@ -45,9 +46,12 @@ func dieIfError(err error) {
 func main() {
 	switch opts.mode {
 	case "s":
+		go s.RunSysStats(time.Now(), time.Second*9)
+		go stats()
 		server()
 
 	case "c":
+		go stats()
 		client()
 
 	default:
@@ -64,6 +68,14 @@ func stats() {
 	for _ = range tick.C {
 		r := atomic.LoadInt64(&bytesR)
 		w := atomic.LoadInt64(&bytesW)
-		fmt.Printf("r:%10s w:%10s\n", gofmt.ByteSize(r), gofmt.ByteSize(w))
+		fmt.Printf("r:%8s w:%8s\n", gofmt.ByteSize(r), gofmt.ByteSize(w))
 	}
+}
+
+func addByteRead(n int) {
+	atomic.AddInt64(&bytesR, int64(n))
+}
+
+func addByteWritten(n int) {
+	atomic.AddInt64(&bytesW, int64(n))
 }

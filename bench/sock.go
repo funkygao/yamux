@@ -13,18 +13,19 @@ func client() {
 	var wg sync.WaitGroup
 	for i := 0; i < opts.c; i++ {
 		wg.Add(1)
-		go func(i int) {
+
+		go func(seq int) {
 			defer wg.Done()
 
-			println("connecting", addr)
 			conn, err := net.Dial("tcp", addr)
 			dieIfError(err)
+			fmt.Printf("connected with %s\n", addr)
 
 			msg := []byte(strings.Repeat("X", opts.sz))
 			for j := 0; j < opts.n; j++ {
-				_, err := conn.Write(msg)
-				//println(i, j)
+				n, err := conn.Write(msg)
 				dieIfError(err)
+				addByteWritten(n)
 			}
 		}(i)
 	}
@@ -42,6 +43,7 @@ func server() {
 		conn, err := l.Accept()
 		dieIfError(err)
 
+		fmt.Printf("got conn from %s\n", conn.RemoteAddr())
 		go handleConn(conn)
 	}
 
@@ -49,12 +51,11 @@ func server() {
 
 func handleConn(conn net.Conn) {
 	b := make([]byte, opts.sz)
-
 	for {
 		b = b[:]
-		_, err := conn.Read(b)
-		//println(string(b[:n]))
+		n, err := conn.Read(b)
 		dieIfError(err)
+		addByteRead(n)
 	}
 
 }

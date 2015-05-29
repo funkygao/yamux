@@ -6,26 +6,25 @@ import (
 	"net"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
-	s "github.com/funkygao/golib/server"
 	"github.com/funkygao/yamux"
 )
 
 func client() {
 	t1 := time.Now()
 	var wg sync.WaitGroup
+
 	conn, err := net.Dial("tcp", addr)
 	dieIfError(err)
-
-	go stats()
+	fmt.Printf("connected with %s\n", addr)
 
 	session, err := yamux.Client(conn, nil)
 	dieIfError(err)
 	fmt.Printf("session created for %s\n", addr)
 	for i := 0; i < opts.c; i++ {
 		wg.Add(1)
+
 		go func(seq int) {
 			defer wg.Done()
 
@@ -35,7 +34,7 @@ func client() {
 			for i := 0; i < opts.n; i++ {
 				n, err := stream.Write(msg)
 				dieIfError(err)
-				atomic.AddInt64(&bytesW, int64(n))
+				addByteWritten(n)
 			}
 		}(i)
 	}
@@ -45,9 +44,6 @@ func client() {
 }
 
 func server() {
-	go s.RunSysStats(time.Now(), time.Second*9)
-	go stats()
-
 	l, err := net.Listen("tcp", addr)
 	dieIfError(err)
 	fmt.Printf("listen on %s\n", addr)
@@ -86,6 +82,6 @@ func handleStream(st *yamux.Stream) {
 			return
 		}
 		dieIfError(err)
-		atomic.AddInt64(&bytesR, int64(n))
+		addByteRead(n)
 	}
 }
