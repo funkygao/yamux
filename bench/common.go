@@ -2,8 +2,9 @@ package main
 
 import (
 	"flag"
-	"fmt"
+	"log"
 	"os"
+	"runtime"
 	"sync/atomic"
 	"time"
 
@@ -43,6 +44,8 @@ func init() {
 	} else {
 		addr = remote
 	}
+
+	runtime.GOMAXPROCS(runtime.NumCPU())
 }
 
 func dieIfError(err error) {
@@ -76,7 +79,7 @@ func stats() {
 	for _ = range tick.C {
 		r := atomic.LoadInt64(&bytesR)
 		w := atomic.LoadInt64(&bytesW)
-		fmt.Printf("r:%8s w:%8s\n", gofmt.ByteSize(r), gofmt.ByteSize(w))
+		log.Printf("r:%8s w:%8s\n", gofmt.ByteSize(r), gofmt.ByteSize(w))
 	}
 }
 

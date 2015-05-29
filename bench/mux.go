@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"io"
+	"log"
 	"net"
 	"strings"
 	"sync"
@@ -17,11 +17,11 @@ func client() {
 
 	conn, err := net.Dial("tcp", addr)
 	dieIfError(err)
-	fmt.Printf("connected with %s\n", addr)
+	log.Printf("connected with %s\n", addr)
 
 	session, err := yamux.Client(conn, nil)
 	dieIfError(err)
-	fmt.Printf("session created for %s\n", addr)
+	log.Printf("session created for %s\n", addr)
 	for i := 0; i < opts.c; i++ {
 		wg.Add(1)
 
@@ -40,13 +40,13 @@ func client() {
 	}
 
 	wg.Wait()
-	fmt.Printf("%s\n", time.Since(t1))
+	log.Printf("%s\n", time.Since(t1))
 }
 
 func server() {
 	l, err := net.Listen("tcp", addr)
 	dieIfError(err)
-	fmt.Printf("listen on %s\n", addr)
+	log.Printf("listen on %s\n", addr)
 
 	for {
 		conn, err := l.Accept()
@@ -60,7 +60,7 @@ func server() {
 func handleConn(conn net.Conn) {
 	session, err := yamux.Server(conn, nil)
 	dieIfError(err)
-	fmt.Printf("session created for %s\n", conn.RemoteAddr())
+	log.Printf("session created for %s\n", conn.RemoteAddr())
 
 	for {
 		stream, err := session.AcceptStream()

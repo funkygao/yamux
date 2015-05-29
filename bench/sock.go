@@ -1,7 +1,8 @@
 package main
 
 import (
-	"fmt"
+	"io"
+	"log"
 	"net"
 	"strings"
 	"sync"
@@ -19,7 +20,7 @@ func client() {
 
 			conn, err := net.Dial("tcp", addr)
 			dieIfError(err)
-			fmt.Printf("connected with %s\n", addr)
+			log.Printf("[%3d]connected with %s\n", seq, addr)
 
 			msg := []byte(strings.Repeat("X", opts.sz))
 			for j := 0; j < opts.n; j++ {
@@ -31,19 +32,19 @@ func client() {
 	}
 
 	wg.Wait()
-	fmt.Printf("%s\n", time.Since(t1))
+	log.Printf("%s\n", time.Since(t1))
 }
 
 func server() {
 	l, err := net.Listen("tcp", addr)
 	dieIfError(err)
-	fmt.Printf("listen on %s\n", addr)
+	log.Printf("listen on %s\n", addr)
 
 	for {
 		conn, err := l.Accept()
 		dieIfError(err)
 
-		fmt.Printf("got conn from %s\n", conn.RemoteAddr())
+		log.Printf("got conn from %s\n", conn.RemoteAddr())
 		go handleConn(conn)
 	}
 
@@ -54,6 +55,9 @@ func handleConn(conn net.Conn) {
 	for {
 		b = b[:]
 		n, err := conn.Read(b)
+		if err == io.EOF {
+			return
+		}
 		dieIfError(err)
 		addByteRead(n)
 	}
