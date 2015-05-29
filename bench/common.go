@@ -12,16 +12,18 @@ import (
 )
 
 const (
-	addr = "localhost:10123"
-	//addr = "10.77.144.193:10123"
+	local  = "localhost:10123"
+	remote = "10.77.144.193:10123"
 )
 
 var (
+	addr string
 	opts struct {
-		c    int
-		sz   int
-		n    int
-		mode string
+		c     int
+		sz    int
+		n     int
+		mode  string
+		local bool
 	}
 
 	bytesR int64
@@ -33,8 +35,14 @@ func init() {
 	flag.IntVar(&opts.sz, "s", 100, "size of each msg")
 	flag.IntVar(&opts.n, "n", 50000, "loops count")
 	flag.StringVar(&opts.mode, "m", "s", "<c|s> mode, c for client and s for server mode")
+	flag.BoolVar(&opts.local, "l", true, "local mode")
 
 	flag.Parse()
+	if opts.local {
+		addr = local
+	} else {
+		addr = remote
+	}
 }
 
 func dieIfError(err error) {
